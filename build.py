@@ -74,7 +74,7 @@ def main():
          "-I", ANDROID_JAR,
          "--manifest", os.path.join(APP, "AndroidManifest.xml"),
          "--min-sdk-version", "26", "--target-sdk-version", "36",
-         "--version-code", "1", "--version-name", "1.0",
+         "--version-code", "5", "--version-name", "1.5",
          "--auto-add-overlay"] + res_flat)
 
     # 3. Kotlin 编译

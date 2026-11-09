@@ -523,17 +523,20 @@ class PermPage(private val act: Activity) : Page {
     private fun applyPreset(set: ZoneSet) {
         val plan = ArrayList<Triple<AppInfo, PermZones, PermZones>>()
         var skipped = 0
+        val netOnly = set.perms == setOf(Perm.NET)
         for (a in apps) {
             if (isProtected(a)) { skipped++; continue }
             val old = PermZoneStore.zonesOf(act, a)
             val want = set.target(old, a.pkg, a)
-            if (want != old) plan.add(Triple(a, old, want))
+            // 网络预设始终全量重放：既应用变更，也顺手修掉旧版本误设的
+            // RUN_ANY_IN_BACKGROUND=ignore（它会让应用无法 startForeground，录屏/下载直接失败）。
+            if (want != old || netOnly) plan.add(Triple(a, old, want))
         }
         if (plan.isEmpty()) {
             Toast.makeText(act, "当前分区已经符合该预设", Toast.LENGTH_SHORT).show()
             return
         }
-        if (set.perms == setOf(Perm.NET)) runNetPreset(set, plan)
+        if (netOnly) runNetPreset(set, plan)
         else runApply("应用预设：${set.name}", plan, set.perms)
     }
 
@@ -577,10 +580,11 @@ class PermPage(private val act: Activity) : Page {
 
             // 普通 UID：netpolicy 逐 uid 批量 + appops 用一条 shell 循环批量设置（这才是「联网限制」真正生效的部分）。
             if (gray.isNotEmpty()) {
-                append("· 灰区 ${gray.size} 个：限制后台联网 + 禁止后台运行")
+                append("· 灰区 ${gray.size} 个：限制后台联网（前台不受影响，不动前台服务）")
                 val bad = PolicyEngine.bulkNetPolicy(gray.map { it.first.uid }, add = true) { line -> append("   $line") }
                 if (bad > 0) fails.add("netpolicy 批量失败 $bad 个（多为系统共享 UID）")
-                PolicyEngine.bulkAppOps(gray.map { it.first.pkg }, "RUN_ANY_IN_BACKGROUND", "ignore") { line -> append("   $line") }
+                // 修复旧版本遗留：RUN_ANY_IN_BACKGROUND=ignore 会让应用无法 startForeground（录屏/下载全挂）
+                PolicyEngine.bulkAppOps(gray.map { it.first.pkg }, "RUN_ANY_IN_BACKGROUND", "allow") { line -> append("   $line") }
             }
             if (black.isNotEmpty()) {
                 append("· 黑区 ${black.size} 个：断后台联网 + 冻结应用")

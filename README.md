@@ -56,13 +56,21 @@
     出站 socket 不会回落到 TUN；
   - **代价**：全部流量经本机转发，耗电/延迟增加；与其它 VPN 互斥；厂商系统可能杀后台，需要「省电无限制 + 自启动」。
   **边界**：只解析 IPv4/IPv6 的 TCP/UDP，无 ICMP；QUIC（UDP 443）按 UDP 直通转发，不做 SNI 解析。
-- **权限如何真正生效（v3 修复）**：
+- **权限如何真正生效（v3 修复，v5 修正后台限制）**：
   - 普通应用（uid ≥ 10000）后台联网限制用 `cmd netpolicy add restrict-background-blacklist <uid>`，
     **必须逐个 uid 执行**（一次传多个时 Android 只接受第一个，这是旧版“大面积不生效”的根因），
-    v3 用一条 shell `for` 循环批量执行；再叠加 `appops RUN_ANY_IN_BACKGROUND invoke ignore` /
-    `RUN_IN_BACKGROUND invoke ignore`、`am set-standby-bucket restricted|rare|active`。
+    v3 用一条 shell `for` 循环批量执行；再叠加 `am set-standby-bucket restricted|rare|active`。
+  - **v5 关键修正**：灰区/黑区**不再**设置 `appops … RUN_ANY_IN_BACKGROUND ignore`。Android 12+ 下该 appop
+    会连带拒绝 `startForeground()`（`Service.startForeground() not allowed due to bg restriction`），
+    导致 MIUI 录屏、下载、投屏等依赖前台服务的应用直接启动失败（系统录屏表现为
+    `SecurityException: Media projections require a foreground service of type FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION`）。
+    现在灰区只做 netpolicy 后台断网 + 待机桶 rare，并把旧版本残留的 `ignore` 复位为 `allow`；
+    应用一次预设即可批量修复，页面日志会显示 `cmd appops set '<pkg>' RUN_ANY_IN_BACKGROUND allow`。
+  - 系统基础组件（`com.android.systemui`、`com.android.shell`、`com.miui.securitycenter`、
+    `com.android.providers.media.module` 等）**永不套用网络/录屏策略**，只允许改定位，
+    避免批量分区误伤系统录屏、媒体写入等公共能力。
   - 系统应用多为共享 uid（`system` 1000 等），netpolicy 直接拒绝（`cannot apply policy to UID 1000`），
-    因此对 `uid < 10000` 只做 appops + 冻结，不再记为失败。
+    因此对 `uid < 10000` 只做待机桶 + 冻结，不再记为失败。
   - 黑区网络 = 后台断网 + 禁止后台运行 + 强制停止 + `pm suspend` 冻结；
     无 Root 时**无法阻止应用在前台联网**（系统不开放按应用的前台断网接口），冻结是等价手段。
   - 定位白区会 `pm grant ACCESS_FINE/COARSE_LOCATION` + appops allow（package 与 uid 两级都复位），确保运行时权限真的拿到；预设菜单里的「重设定位权限」可一键修复旧版本遗留的 `ignore`；

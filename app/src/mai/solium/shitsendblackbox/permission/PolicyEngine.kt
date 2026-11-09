@@ -66,6 +66,11 @@ object PolicyEngine {
         if (!Shell.available()) return OpResult(false, "Shizuku 不可用")
         if (app.uid <= 0) return OpResult(false, "应用未安装")
         if (isProtected(app)) return OpResult(true, "受保护，已跳过")
+        if ((perm == Perm.NET || perm == Perm.REC) && isCriticalPkg(app.pkg)) {
+            log?.invoke("系统基础组件，跳过「${perm.label}」策略（避免连累录屏/联网等系统功能）")
+            PermFailStore.clear(ctx, app.pkg, perm)
+            return OpResult(true, "系统组件：${perm.label} 跳过")
+        }
         val fails = ArrayList<String>()
         when (perm) {
             Perm.NET -> applyNet(app, zone, fails, log)
@@ -114,15 +119,19 @@ object PolicyEngine {
                     fails.add("netpolicy 后台断网失败（uid=${app.uid}）")
                 }
                 setOp(app.pkg, "RUN_IN_BACKGROUND", "ignore", fails, log)
-                setOp(app.pkg, "RUN_ANY_IN_BACKGROUND", "ignore", fails, log, optional = true)
+                // 黑区靠 pm suspend 冻结，不用 RUN_ANY_IN_BACKGROUND=ignore（那会挡 startForeground，且对系统组件破坏性大）
+                setOp(app.pkg, "RUN_ANY_IN_BACKGROUND", "allow", fails, log, optional = true)
                 standby(app.pkg, "restricted", fails, log, optional = true)
                 run("am force-stop $pkg", log)
                 log?.invoke("黑区网络：后台断网 + 禁止后台运行 + 强制停止 + 冻结（彻底断网）")
             }
             Zone.GRAY.id -> {
-                if (shared) log?.invoke("系统共享 UID=${app.uid}，netpolicy 不支持，只限制后台运行")
+                if (shared) log?.invoke("系统共享 UID=${app.uid}，netpolicy 不支持，只调低待机桶")
                 else if (!netPolicy(app.uid, add = true, log)) fails.add("netpolicy 后台断网失败（uid=${app.uid}）")
-                setOp(app.pkg, "RUN_ANY_IN_BACKGROUND", "ignore", fails, log, optional = true)
+                // 注意：绝不能把 RUN_ANY_IN_BACKGROUND 设为 ignore —— Android 12+ 会因此拒绝
+                // startForeground()（日志 `Service.startForeground() not allowed due to bg restriction`），
+                // 系统录屏/下载/投屏等依赖前台服务的应用会直接启动失败。这里顺便把旧版本的 ignore 复位。
+                setOp(app.pkg, "RUN_ANY_IN_BACKGROUND", "allow", fails, log, optional = true)
                 standby(app.pkg, "rare", fails, log, optional = true)
             }
             else -> {
@@ -211,7 +220,12 @@ object PolicyEngine {
                 setOp(app.pkg, "RUN_IN_BACKGROUND", "ignore", fails, log, verify = false)
                 run("am force-stop ${q(app.pkg)}", log)
             }
-            Zone.GRAY.id -> setOp(app.pkg, "RUN_ANY_IN_BACKGROUND", "ignore", fails, log, verify = false)
+            Zone.GRAY.id -> {
+                // 系统共享 UID 不能进 netpolicy；也不要用 RUN_ANY_IN_BACKGROUND=ignore（会挡 startForeground），
+                // 只调低待机桶，并把旧版本残留的 ignore 复位。
+                standby(app.pkg, "rare", fails, log, optional = true)
+                setOp(app.pkg, "RUN_ANY_IN_BACKGROUND", "allow", fails, log, optional = true, verify = false)
+            }
             else -> {
                 setOp(app.pkg, "RUN_IN_BACKGROUND", "allow", fails, log, verify = false)
                 setOp(app.pkg, "RUN_ANY_IN_BACKGROUND", "allow", fails, log, optional = true, verify = false)
@@ -336,6 +350,26 @@ object PolicyEngine {
 
     private fun isProtected(app: AppInfo): Boolean =
         Scanner.isProtectedDelete(app.pkg) || Scanner.isCritical(app.pkg)
+
+    /**
+     * 系统基础组件：录屏/权限/媒体/网络 相关策略一旦落到它们身上会连累所有应用
+     * （例如给 com.android.systemui 设 PROJECT_MEDIA=deny 会让录屏、投屏全挂；
+     *   给 MediaProvider 设 deny 会让应用写视频失败）。这里永不改动它们的 NET/REC。
+     */
+    private val CRITICAL_PKGS = setOf(
+        "android",
+        "com.android.systemui",
+        "com.android.shell",
+        "com.android.settings",
+        "com.android.permissioncontroller",
+        "com.google.android.permissioncontroller",
+        "com.android.providers.media.module",
+        "com.android.providers.downloads",
+        "com.miui.securitycenter",
+        "com.miui.securityadd"
+    )
+
+    fun isCriticalPkg(pkg: String): Boolean = pkg in CRITICAL_PKGS
 
     private fun q(s: String): String = "'" + s.replace("'", "") + "'"
 }
