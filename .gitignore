@@ -1,0 +1,19 @@
+# 构建产物
+bb/
+build/
+out/
+testdir/
+dist/
+*.apk
+*.ap_
+*.dex
+*.jar
+
+# 本地配置
+local.properties
+.gradle/
+.idea/
+*.iml
+
+# 日志
+*.log

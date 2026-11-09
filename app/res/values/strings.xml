@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">史终黑盒</string>
+    <string name="tab_scan">清理</string>
+    <string name="tab_perm">权限</string>
+    <string name="tab_net">网络</string>
+    <string name="tab_settings">设置</string>
+</resources>

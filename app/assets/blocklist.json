@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "groups": [
+    {
+      "id": "doh",
+      "name": "加密 DNS 服务商（DoH/DoT，默认开启）",
+      "enabled": true,
+      "domains": [
+        "dns.google",
+        "dns.google.com",
+        "doh.pub",
+        "dns.pub",
+        "dot.pub",
+        "dns.alidns.com",
+        "cloudflare-dns.com",
+        "mozilla.cloudflare-dns.com",
+        "dns.quad9.net",
+        "doh.360.cn",
+        "doh.opendns.com",
+        "dns.adguard-dns.com",
+        "doh.dnspod.cn",
+        "dns.nextdns.io",
+        "doh.mullvad.net",
+        "dns.sb"
+      ],
+      "ips": [
+        "8.8.8.8",
+        "8.8.4.4",
+        "1.1.1.1",
+        "1.0.0.1",
+        "9.9.9.9",
+        "149.112.112.112",
+        "223.5.5.5",
+        "223.6.6.6",
+        "119.29.29.29"
+      ]
+    },
+    {
+      "id": "unicom-dm",
+      "name": "联通 DM 设备管理组件",
+      "enabled": true,
+      "domains": [
+        "dm.wo.com.cn"
+      ],
+      "ips": []
+    },
+    {
+      "id": "baidu-loc",
+      "name": "百度定位 SDK（默认关闭；开启后依赖百度定位的 App 可能无法定位）",
+      "enabled": false,
+      "domains": [
+        "loc.map.baidu.com",
+        "ofloc.map.baidu.com",
+        "api.map.baidu.com",
+        "daup.map.baidu.com",
+        "itsdata.map.baidu.com"
+      ],
+      "ips": []
+    },
+    {
+      "id": "xiaomi-guardprovider",
+      "name": "小米系统安全组件（录屏/应用清单回传）",
+      "enabled": true,
+      "domains": [
+        "fraud-detection.engine.miui.com",
+        "flash.sec.miui.com",
+        "api.sec.miui.com",
+        "detection-aigc.engine.miui.com",
+        "push-service.sec.miui.com",
+        "virus-engine.sec.miui.com",
+        "tracking.miui.com",
+        "tracking.intl.miui.com",
+        "tracking.rus.miui.com",
+        "tracking.india.miui.com",
+        "tracking.eu.miui.com",
+        "sdkconfig.xiaomi.com",
+        "cn.register.xmpush.xiaomi.com",
+        "api.ad.xiaomi.com",
+        "app.chat.xiaomi.net",
+        "privacy.mi.com",
+        "pkgs.d.xiaomi.net",
+        "resolver.msg.xiaomi.net",
+        "data.mistat.xiaomi.com"
+      ],
+      "ips": [
+        "120.232.24.122",
+        "157.255.5.122",
+        "14.18.251.115"
+      ]
+    },
+    {
+      "id": "tencent-beacon",
+      "name": "腾讯 Beacon 统计（默认关闭，按需开启）",
+      "enabled": false,
+      "domains": [
+        "beacon.qq.com",
+        "pingfore.qq.com",
+        "pingfore.qq.com.cn",
+        "oth.eve.mdt.qq.com",
+        "oth.str.mdt.qq.com"
+      ],
+      "ips": []
+    },
+    {
+      "id": "umeng",
+      "name": "友盟统计（默认关闭，按需开启）",
+      "enabled": false,
+      "domains": [
+        "ulogs.umeng.com",
+        "ulogs.umengcloud.com",
+        "alog.umeng.com",
+        "alog.umengcloud.com",
+        "umeng.com"
+      ],
+      "ips": []
+    }
+  ]
+}
